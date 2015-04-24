@@ -5,17 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LENSE outline</title>
 <link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<style>
+img {
+  width: 700px;
+}
+</style>
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
 </head>
 <body><div class="container"><h1 id="the-lense-project">The L.E.N.S.E. Project</h1>
 
 <p>(Learning from Expensive, Noisy, Slow Experts)</p>
 
-<p>This is a document to explain the project.</p>
+<p><strong>Version 0.1</strong> <br>
+This is a draft document to explain the project.</p>
 
 <hr>
-
-
 
 <h4 id="here-are-all-of-my-disclaimers">Here are all of my disclaimers</h4>
 
@@ -57,7 +61,7 @@
 
 <p>Computers can learn from examples in real time, and not bother humans with questions the model already knows about. This will <strong>save money</strong>. Costs should scale at roughly <script type="math/tex" id="MathJax-Element-165">O(log(N))</script>, instead of <script type="math/tex" id="MathJax-Element-166">O(N)</script> for the no-learning case, as the computer learns to handle the common kinds of queries independently. The tagline here is <strong>decreasing marginal cost</strong>.</p>
 
-<p><img src="http://keenon.github.io/assets/lense/scaling_costs.png" alt="relative scaling costs" title=""></p>
+<p><img src="http://keenon.github.io/assets/lense/scaling_costs.png" alt="relative scaling costs" title="" style="width: 400px"></p>
 
 
 
@@ -73,21 +77,21 @@
 
 <p>Deciding whether to query another human or turn in our current best guess is complicated. We resort to Bayesian Decision Theory here, where we specify some loss function <script type="math/tex" id="MathJax-Element-3108">L(c,t,E)</script> which we seek to minimize. The inputs are: <script type="math/tex" id="MathJax-Element-3109">c</script> is the financial cost, <script type="math/tex" id="MathJax-Element-3110">t</script> is the time, and <script type="math/tex" id="MathJax-Element-3111">E</script> is the expectation that our guess is wrong (<script type="math/tex" id="MathJax-Element-3112">E = 1 - P(guess)</script>). We make decisions in order to minimize expected loss. We get to this in the section after next.</p>
 
-<h2 id="learning-pthetax-and-phx">Learning <script type="math/tex" id="MathJax-Element-5517">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-5518">P(h|x)</script></h2>
+<h2 id="learning-pthetax-and-phx">Learning <script type="math/tex" id="MathJax-Element-7110">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7111">P(h|x)</script></h2>
 
-<p>The key to making LENSE work is that its parameters for the model <script type="math/tex" id="MathJax-Element-5519">P_{\theta}(x)</script> are learned over time. We want <strong>fewer and fewer queries to be made to humans as (features, opinion) pairs accumulate</strong> and the parameters are refined. As an added bonus, LENSE should also learn the parameters for <script type="math/tex" id="MathJax-Element-5520">P(h|x)</script> as accurately as possible. </p>
+<p>The key to making LENSE work is that its parameters for the model <script type="math/tex" id="MathJax-Element-7112">P_{\theta}(x)</script> are learned over time. We want <strong>fewer and fewer queries to be made to humans as (features, opinion) pairs accumulate</strong> and the parameters are refined. As an added bonus, LENSE should also learn the parameters for <script type="math/tex" id="MathJax-Element-7113">P(h|x)</script> as accurately as possible. </p>
 
 <p>We will perform this learning in a PGM structure, taking advantage of existing algorithms for handling learning with unobserved variables.</p>
 
-<p><strong>Note [Research Opportunity]:</strong> In the naive case I present here, this can be done with EM in batches over all currently available data. I’m not aware of an online algorithm for unlabeled variables in the general case, but maybe we could come up with one in this special case.</p>
+<p><strong>Note:</strong> In the naive case I present here, this can be done with EM in batches over all currently available data. It turns out Percy has a paper on doing it in the online case, so that’s no problem: <a href="http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf">Online EM for Unsupervised Models (NAACL ‘09)</a></p>
 
 <p>In our Chinese Restaurant confirmation system example, we have the following structure (which can be extended, we discuss that later):</p>
 
 <p><img src="http://keenon.github.io/assets/lense/plate_model.png" alt="plate model" title=""></p>
 
-<p>The only thing not specified here is exactly how the model weights combine with features to create <script type="math/tex" id="MathJax-Element-5521">P_{\theta}(x)</script>, and how human error weights combine with the hidden true value <script type="math/tex" id="MathJax-Element-5522">P(h|x)</script>. This is by design, to allow flexibility within the framework.</p>
+<p>The only thing not specified here is exactly how the model weights combine with features to create <script type="math/tex" id="MathJax-Element-7114">P_{\theta}(x)</script>, and how human error weights combine with the hidden true value <script type="math/tex" id="MathJax-Element-7115">P(h|x)</script>. This is by design, to allow flexibility within the framework.</p>
 
-<p><script type="math/tex" id="MathJax-Element-5523">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-5524">P(h|x)</script> can be <strong>any functions that output valid probability distributions</strong>. This includes logistic regression, neural networks ending in a normalized layer, and everything in between.</p>
+<p><script type="math/tex" id="MathJax-Element-7116">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7117">P(h|x)</script> can be <strong>any functions that output valid probability distributions</strong>. This includes logistic regression, neural networks ending in a normalized layer, and everything in between.</p>
 
 <h2 id="minimizing-lcte">Minimizing <script type="math/tex" id="MathJax-Element-5254">L(c,t,E)</script></h2>
 
@@ -149,6 +153,8 @@
 
 <p>The unsexy first order of business is a central implementation people can use as a platform for experimentation. That means abstract classes for each of the subcomponents, so changes are easily pluggable. It also means a lot of plumbing and machinery to get the whole thing working, and some careful interface design.</p>
 
+<p>A <a href="https://github.com/lense-project/lense-ref">GitHub repo</a> is up, but currently empty. The current plan (subject to change, if something better comes along) is to build an implementation based on <a href="http://factorie.cs.umass.edu/">FACTORIE</a>. Contributors are of course welcome.</p>
+
 <h2 id="research-ideas">Research Ideas</h2>
 
 <p>LENSE can be broken down into several subcomponents, which can each be improved individually, more or less. This provides an opportunity to fruitfully <strong>work completely separately, but with mutual goals</strong>, which I’ve always found was the most productive way to go.</p>
@@ -164,17 +170,19 @@
 <li><a href="https://www.soe.ucsc.edu/research/technical-reports/UCSC-SOE-14-01/download">WorkerRank: Using Employer Implicit Judgements To Infer Worker Reputation (NIPS ‘14)</a></li>
 </ul>
 
-<h3 id="the-right-objective-for-pthetax-and-phx">The right objective for <script type="math/tex" id="MathJax-Element-6976">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-6977">P(h|x)</script>:</h3>
+<h3 id="the-right-objective-for-pthetax-and-phx">The right objective for <script type="math/tex" id="MathJax-Element-7031">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7032">P(h|x)</script>:</h3>
 
-<p>Any model for <script type="math/tex" id="MathJax-Element-6978">P_{\theta}(x)</script> that gets used with LENSE needs to provide <strong>accurate statistical estimates</strong>, and <strong>must return a uniform distribution when it doesn’t know</strong>. This is more important than F1. That means that regularization is very important, and that we can’t expect optimal performance from many off-the-shelf algorithms (basically all of classification, and even some regression setups).</p>
+<p>Any model for <script type="math/tex" id="MathJax-Element-7033">P_{\theta}(x)</script> that gets used with LENSE needs to provide <strong>accurate statistical estimates</strong>, and <strong>must return a uniform distribution when it doesn’t know</strong>. This is more important than F1. That means that regularization is very important, and that we can’t expect optimal performance from many off-the-shelf algorithms (basically all of classification, and even some regression setups).</p>
 
-<p>Picking the right training objective for this is key. This should probably involve a reference to <script type="math/tex" id="MathJax-Element-6979">L(c,t,E)</script>, because a stronger regularizer will increase your expected cost <script type="math/tex" id="MathJax-Element-6980">c</script> and delay <script type="math/tex" id="MathJax-Element-6981">t</script> in return for better guarantees about your guess of your error expectation <script type="math/tex" id="MathJax-Element-6982">E</script> being an overestimate.</p>
+<p>Picking the right training objective for this is key. This should probably involve a reference to <script type="math/tex" id="MathJax-Element-7034">L(c,t,E)</script>, because a stronger regularizer will increase your expected cost <script type="math/tex" id="MathJax-Element-7035">c</script> and delay <script type="math/tex" id="MathJax-Element-7036">t</script> in return for better guarantees about your guess of your error expectation <script type="math/tex" id="MathJax-Element-7037">E</script> being an overestimate.</p>
 
 <p><strong>Related Work</strong>:</p>
 
 <ul>
 <li><a href="http://link.springer.com/book/10.1007%2F978-1-4757-4286-2">Statistical Decision Theory and Bayesian Analysis</a> (this is a whole book, but its concept of applying a loss function to statistical estimation of values might be a good place to start, beginning on p. 24)</li>
 </ul>
+
+
 
 <h3 id="interface-design-to-optimize-human-response-time-when-asking-questions">Interface design to optimize human response time when asking questions:</h3>
 
