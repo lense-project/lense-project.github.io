@@ -21,6 +21,13 @@ This is a casually written draft document to explain the project.</p>
 
 <hr>
 
+<h4 id="latest-news">Latest News</h4>
+
+<ul>
+<li>Rough implementation is now <a href="https://github.com/lense-project/lense-base">up on GitHub</a></li>
+<li>Check out our <a href="http://lense-project.github.io/early-results.txt">early results</a>.</li>
+</ul>
+
 <h4 id="abstract">Abstract</h4>
 
 <p>We explore making time-sensitive predictions on an infinite stream of “problem instances” by selectively querying humans for noisy partial information, and exploiting previous observations to train a classifier that can incrementally take over from the humans. This stream is assumed to be too large to be kept in memory, so querying backwards over previously seen examples is considered impractical.</p>
@@ -33,8 +40,6 @@ This is a casually written draft document to explain the project.</p>
 <li>We propose a way to do structured instance prediction in the general case, by which we mean we can handle arbitrary multi-variable problem instances, with factor-graph structure. We also allow collection of human opinions about one variable at a time. (We stress <em>arbitrary</em> factor graphs, because there have been domain specific online structured prediction systems in the past, e.g. <a href="http://cogcomp.cs.illinois.edu/papers/SmallRo10.pdf">dependency parsing by Dan Roth</a>)</li>
 <li>We also provide a novel fully Bayesian approach to Online Active Learning, which can optimize arbitrary loss functions.</li>
 </ul>
-
-<p>Check out our <a href="http://lense-project.github.io/early-results.txt">early results</a>.</p>
 
 <hr>
 
