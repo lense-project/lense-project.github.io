@@ -5,33 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LENSE outline</title>
 <link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
 <style>
 img {
-  width: 700px;
+	  width: 700px;
 }
 </style>
-<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
 </head>
 <body><div class="container"><h1 id="the-lense-project">The L.E.N.S.E. Project</h1>
 
 <p>(Learning from Expensive, Noisy, Slow Experts)</p>
 
-<p><strong>Version 0.1</strong> <br>
-This is a draft document to explain the project.</p>
+<p><strong>Version 0.2</strong> <br>
+This is a casually written draft document to explain the project.</p>
 
 <hr>
 
-<h4 id="here-are-all-of-my-disclaimers">Here are all of my disclaimers</h4>
+<h4 id="abstract">Abstract</h4>
 
-<p><strong>DISCLAIMER:</strong> Right now this is basically a system implementation project, not ML theory research. This is a Frankenstein monster of old techniques that already work, applied in a kind-of-novel setting, with strong echoes of active learning. None of the components described here could be called original research.</p>
+<p>We explore making time-sensitive predictions on an infinite stream of “problem instances” by selectively querying humans for noisy partial information, and exploiting previous observations to train a classifier that can incrementally take over from the humans. This stream is assumed to be too large to be kept in memory, so querying backwards over previously seen examples is considered impractical.</p>
 
-<p><strong>CAVEAT TO DISCLAIMER:</strong> That being said, there’s plenty of <em>opportunities</em> for original theoretical contributions within this setting. See the bottom for some ideas of directions to go in.</p>
+<p>A limited version of this setting has been independently proposed several times under different names over the past two decades. It’s been called “<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.414.1128&amp;rep=rep1&amp;type=pdf">Active Learning in a streaming setting</a>“, “<a href="https://www.google.com/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=3&amp;cad=rja&amp;uact=8&amp;ved=0CDIQFjAC&amp;url=http%3A%2F%2Fvideolectures.net%2Fsite%2Fnormal_dl%2Ftag%3D645374%2Fecmlpkdd2011_zliobaite_data_01.pdf&amp;ei=VmNBVaGCNYS7ogSVuYHIAw&amp;usg=AFQjCNGKwmhKslrNUDPS9lf03cLZp6F--Q&amp;sig2=NoWhiWRe5MLeQvwZHumBvg">Online Active Learning</a>” or “<a href="https://users.soe.ucsc.edu/~dph/mypubs/LabelEfficient97.pdf">Label Efficient Learning</a>,” to name a few. This is generally proposed under two limitations: the “problem instances” must be multi-class classification problems, and the learning algorithm optimizes a Frequentist objective that does not provide a way for you to specify the complicated trade-off between expense, time delay, and expected number of errors.</p>
 
-<p><strong>HOW THIS IS DIFFERENT FROM ACTIVE LEARNING:</strong> Active learning is concerned with building an accurate corpus at minimal cost, and so has the choice to query for noisy labels (at some cost) on any datapoint in its possession. This doc will present a setting where the goal is to optimize a specified accuracy-cost-time tradeoff in an <strong>online setting</strong>, and so does not have the luxury of jumping around in the data, or leaving some points unlabeled, and must optimize a more complicated reward function that involves time delay while doing so.</p>
+<p>This project proposes two improvements on the historical work: </p>
+
+<ul>
+<li>We propose a way to do structured instance prediction in the general case, by which we mean we can handle arbitrary multi-variable problem instances, with factor-graph structure. We also allow collection of human opinions about one variable at a time. (We stress <em>arbitrary</em> factor graphs, because there have been domain specific online structured prediction systems in the past, e.g. <a href="http://cogcomp.cs.illinois.edu/papers/SmallRo10.pdf">dependency parsing by Dan Roth</a>)</li>
+<li>We also provide a novel fully Bayesian approach to Online Active Learning, which can optimize arbitrary loss functions.</li>
+</ul>
+
+<p>Check out our <a href="http://lense-project.github.io/early-results.txt">early results</a>.</p>
 
 <hr>
 
-<h2 id="ai-fake-it-until-you-make-it">The L.E.N.S.E. approach to hard AI: “Fake it until you make it”</h2>
+<h2 id="the-lense-motto-fake-it-until-you-make-it">The L.E.N.S.E. motto: “Fake it until you make it”</h2>
 
 <p>Humans are already AI complete, so why not fake hyper intelligent AI by just asking for help once in a while? Generally, this doesn’t scale because it’s too expensive. Our trick is to <em>learn</em> from the human responses we get, and phase out humans as we learn. In short, the LENSE approach to hard AI: “fake it until you make it.”</p>
 
@@ -49,19 +56,21 @@ This is a draft document to explain the project.</p>
 
 <h2 id="motivating-example">Motivating Example:</h2>
 
-<p>You answer the phone for a Chinese Food restaurant. You start to notice that every call follows pretty much the same flow, and you want to know if it would be possible to teach a computer to take over the phones for you. We'll call this the Chinese Restaurant Process (pun intended)</p>
+<p>You answer the phone for a Chinese Food restaurant. You start to notice that every call follows pretty much the same flow, and you want to know if it would be possible to teach a computer to take over the phones for you. We’ll call this the Chinese Restaurant Process (pun intended)</p>
 
 <p><img src="http://keenon.github.io/assets/lense/chinese_restaurant_process.png" alt="the Chinese Restaurant Process (pun intended)" title=""></p>
 
 <p><em>If</em> we could have AI advanced enough to figure out the decisions at the red parts, we can let MacSpeech do the rest. No such AI exists at the moment, so we’ll have to <em>fake it</em>. LENSE aims to do exactly that.</p>
 
+
+
 <h2 id="people-are-ai-complete-why-is-this-news">People are AI complete. Why is this news?</h2>
 
 <p>Well, it isn’t, quite. The trick is <strong>money</strong>. People want to get paid for the work they do. Businesses don’t like how that scales.</p>
 
-<p>Computers can learn from examples in real time, and not bother humans with questions the model already knows about. This will <strong>save money</strong>. Costs should scale at roughly <script type="math/tex" id="MathJax-Element-165">O(log(N))</script>, instead of <script type="math/tex" id="MathJax-Element-166">O(N)</script> for the no-learning case, as the computer learns to handle the common kinds of queries independently. The tagline here is <strong>decreasing marginal cost</strong>.</p>
+<p>Computers can learn from examples in real time, and not bother humans with questions the model already knows about. This will <strong>save money</strong>. Costs should scale at roughly <script type="math/tex" id="MathJax-Element-1">O(log(N))</script>, instead of <script type="math/tex" id="MathJax-Element-2">O(N)</script> for the no-learning case, as the computer learns to handle the common kinds of queries independently. The tagline here is <strong>decreasing marginal cost</strong>.</p>
 
-<p><img src="http://keenon.github.io/assets/lense/scaling_costs.png" alt="relative scaling costs" title="" style="width: 400px"></p>
+<p><img src="http://keenon.github.io/assets/lense/scaling_costs.png" alt="relative scaling costs" title=""></p>
 
 
 
@@ -71,15 +80,17 @@ This is a draft document to explain the project.</p>
 
 <p><img src="http://keenon.github.io/assets/lense/lense_example.png" alt="confirmation detection example" title=""></p>
 
-<p>First, we get a “prior belief” over the possible values of <script type="math/tex" id="MathJax-Element-3099">x</script>, <script type="math/tex" id="MathJax-Element-3100">P_{\theta}(x)</script>, according to our model. This comes from a standard machine learning model, which we’ll explain in the next section.</p>
+<p>First, we get a “prior belief” over the possible values of <script type="math/tex" id="MathJax-Element-3">x</script>, <script type="math/tex" id="MathJax-Element-4">P_{\theta}(x)</script>, according to our model. This comes from a standard machine learning model, which we’ll explain in the next section.</p>
 
-<p>In the absence of other information, <script type="math/tex" id="MathJax-Element-3101">P(x)</script>, our belief over the true value of <script type="math/tex" id="MathJax-Element-3102">x</script>, is equal to <script type="math/tex" id="MathJax-Element-3103">P_{\theta}(x)</script>. <script type="math/tex" id="MathJax-Element-3104">P(x)</script> can be more or less “peaky.” For a less peaky <script type="math/tex" id="MathJax-Element-3105">P(x)</script>, we can increase the peakiness of our distribution over <script type="math/tex" id="MathJax-Element-3106">x</script> by querying a human, and using Bayes’ rule: <script type="math/tex" id="MathJax-Element-3107">P(x|h) = P(x)*P(h|x)</script>. Once sufficient mass is concentrated in one class, we turn in our result.</p>
+<p>In the absence of other information, <script type="math/tex" id="MathJax-Element-5">P(x)</script>, our belief over the true value of <script type="math/tex" id="MathJax-Element-6">x</script>, is equal to <script type="math/tex" id="MathJax-Element-7">P_{\theta}(x)</script>. <script type="math/tex" id="MathJax-Element-8">P(x)</script> can be more or less “peaky.” For a less peaky <script type="math/tex" id="MathJax-Element-9">P(x)</script>, we can increase the peakiness of our distribution over <script type="math/tex" id="MathJax-Element-10">x</script> by querying a human, and using Bayes’ rule: <script type="math/tex" id="MathJax-Element-11">P(x|h) = P(x)*P(h|x)</script>. Once sufficient mass is concentrated in one class, we turn in our result.</p>
 
-<p>Deciding whether to query another human or turn in our current best guess is complicated. We resort to Bayesian Decision Theory here, where we specify some loss function <script type="math/tex" id="MathJax-Element-3108">L(c,t,E)</script> which we seek to minimize. The inputs are: <script type="math/tex" id="MathJax-Element-3109">c</script> is the financial cost, <script type="math/tex" id="MathJax-Element-3110">t</script> is the time, and <script type="math/tex" id="MathJax-Element-3111">E</script> is the expectation that our guess is wrong (<script type="math/tex" id="MathJax-Element-3112">E = 1 - P(guess)</script>). We make decisions in order to minimize expected loss. We get to this in the section after next.</p>
+<p>Deciding whether to query another human or turn in our current best guess is complicated. We resort to Bayesian Decision Theory here, where we specify some loss function <script type="math/tex" id="MathJax-Element-12">L(c,t,E)</script> which we seek to minimize. The inputs are: <script type="math/tex" id="MathJax-Element-13">c</script> is the financial cost, <script type="math/tex" id="MathJax-Element-14">t</script> is the time, and <script type="math/tex" id="MathJax-Element-15">E</script> is the expectation that our guess is wrong (<script type="math/tex" id="MathJax-Element-16">E = 1 - P(guess)</script>). We make decisions in order to minimize expected loss. We get to this in the section after next.</p>
 
-<h2 id="learning-pthetax-and-phx">Learning <script type="math/tex" id="MathJax-Element-7110">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7111">P(h|x)</script></h2>
 
-<p>The key to making LENSE work is that its parameters for the model <script type="math/tex" id="MathJax-Element-7112">P_{\theta}(x)</script> are learned over time. We want <strong>fewer and fewer queries to be made to humans as (features, opinion) pairs accumulate</strong> and the parameters are refined. As an added bonus, LENSE should also learn the parameters for <script type="math/tex" id="MathJax-Element-7113">P(h|x)</script> as accurately as possible. </p>
+
+<h2 id="learning-pthetax-and-phx">Learning <script type="math/tex" id="MathJax-Element-17">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-18">P(h|x)</script></h2>
+
+<p>The key to making LENSE work is that its parameters for the model <script type="math/tex" id="MathJax-Element-19">P_{\theta}(x)</script> are learned over time. We want <strong>fewer and fewer queries to be made to humans as (features, opinion) pairs accumulate</strong> and the parameters are refined. As an added bonus, LENSE should also learn the parameters for <script type="math/tex" id="MathJax-Element-20">P(h|x)</script> as accurately as possible. </p>
 
 <p>We will perform this learning in a PGM structure, taking advantage of existing algorithms for handling learning with unobserved variables.</p>
 
@@ -89,19 +100,21 @@ This is a draft document to explain the project.</p>
 
 <p><img src="http://keenon.github.io/assets/lense/plate_model.png" alt="plate model" title=""></p>
 
-<p>The only thing not specified here is exactly how the model weights combine with features to create <script type="math/tex" id="MathJax-Element-7114">P_{\theta}(x)</script>, and how human error weights combine with the hidden true value <script type="math/tex" id="MathJax-Element-7115">P(h|x)</script>. This is by design, to allow flexibility within the framework.</p>
+<p>The only thing not specified here is exactly how the model weights combine with features to create <script type="math/tex" id="MathJax-Element-21">P_{\theta}(x)</script>, and how human error weights combine with the hidden true value <script type="math/tex" id="MathJax-Element-22">P(h|x)</script>. This is by design, to allow flexibility within the framework.</p>
 
-<p><script type="math/tex" id="MathJax-Element-7116">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7117">P(h|x)</script> can be <strong>any functions that output valid probability distributions</strong>. This includes logistic regression, neural networks ending in a normalized layer, and everything in between.</p>
+<p><script type="math/tex" id="MathJax-Element-23">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-24">P(h|x)</script> can be <strong>any functions that output valid probability distributions</strong>. This includes logistic regression, neural networks ending in a normalized layer, and everything in between.</p>
 
-<h2 id="minimizing-lcte">Minimizing <script type="math/tex" id="MathJax-Element-5254">L(c,t,E)</script></h2>
 
-<p>The decision to query humans is made based on our current beliefs <script type="math/tex" id="MathJax-Element-5255">P(x)</script>, and our preferences about outcomes, as expressed in <script type="math/tex" id="MathJax-Element-5256">L(c,t,E)</script>.</p>
 
-<p>In some settings, the cost of a 1% chance of error is far higher than the cost of asking 3 more people their opinions (ex. lawyers collecting case data). In other settings, the cost of an additional 500ms of latency is unacceptable (ex. hedge fund news analysis, consumer products). In still others, cost is the primary concern and both accuracy and latency aren’t as important (ex. corpus construction for ML). This is all encoded precisely by <script type="math/tex" id="MathJax-Element-5257">L(c,t,E)</script>.</p>
+<h2 id="minimizing-lcte">Minimizing <script type="math/tex" id="MathJax-Element-25">L(c,t,E)</script></h2>
 
-<p>Bayesian statisticians are in general a pessimistic bunch, looking at every outcome as incurring some loss, and we follow their lead. Loss is a function of the cost <script type="math/tex" id="MathJax-Element-5258">c</script>, the time <script type="math/tex" id="MathJax-Element-5259">t</script>, and the expectation of error, <script type="math/tex" id="MathJax-Element-5260">E</script>. <script type="math/tex" id="MathJax-Element-5261">c</script> and <script type="math/tex" id="MathJax-Element-5262">t</script> are trivial to calculate, and <script type="math/tex" id="MathJax-Element-5263">E</script> is calculated by taking the probability under our current <script type="math/tex" id="MathJax-Element-5264">P(x)</script> that our guess <script type="math/tex" id="MathJax-Element-5265">g</script> is incorrect. That’s <script type="math/tex" id="MathJax-Element-5266">E = 1-P(g)</script>.</p>
+<p>The decision to query humans is made based on our current beliefs <script type="math/tex" id="MathJax-Element-26">P(x)</script>, and our preferences about outcomes, as expressed in <script type="math/tex" id="MathJax-Element-27">L(c,t,E)</script>.</p>
 
-<p>Making no assumptions about the form of <script type="math/tex" id="MathJax-Element-5267">L(c,t,E)</script>, we are trying to make a decision that minimizes our expected loss. We can look at this as a game tree, where our “opponent” (the crowd we’re querying) is playing the statistical strategy <script type="math/tex" id="MathJax-Element-5268">P(h) = P(h|x)P_{\theta}(x)</script>. We can calculate <script type="math/tex" id="MathJax-Element-5269">L(c,t,E)</script> in closed form whenever we choose to “turn in” our best guess at a node in our game tree, since we can calculate <script type="math/tex" id="MathJax-Element-5270">E</script> and we know <script type="math/tex" id="MathJax-Element-5271">c</script>, and can take an expectation over <script type="math/tex" id="MathJax-Element-5272">t</script> at that point.</p>
+<p>In some settings, the cost of a 1% chance of error is far higher than the cost of asking 3 more people their opinions (ex. lawyers collecting case data). In other settings, the cost of an additional 500ms of latency is unacceptable (ex. hedge fund news analysis, consumer products). In still others, cost is the primary concern and both accuracy and latency aren’t as important (ex. corpus construction for ML). This is all encoded precisely by <script type="math/tex" id="MathJax-Element-28">L(c,t,E)</script>.</p>
+
+<p>Bayesian statisticians are in general a pessimistic bunch, looking at every outcome as incurring some loss, and we follow their lead. Loss is a function of the cost <script type="math/tex" id="MathJax-Element-29">c</script>, the time <script type="math/tex" id="MathJax-Element-30">t</script>, and the expectation of error, <script type="math/tex" id="MathJax-Element-31">E</script>. <script type="math/tex" id="MathJax-Element-32">c</script> and <script type="math/tex" id="MathJax-Element-33">t</script> are trivial to calculate, and <script type="math/tex" id="MathJax-Element-34">E</script> is calculated by taking the probability under our current <script type="math/tex" id="MathJax-Element-35">P(x)</script> that our guess <script type="math/tex" id="MathJax-Element-36">g</script> is incorrect. That’s <script type="math/tex" id="MathJax-Element-37">E = 1-P(g)</script>.</p>
+
+<p>Making no assumptions about the form of <script type="math/tex" id="MathJax-Element-38">L(c,t,E)</script>, we are trying to make a decision that minimizes our expected loss. We can look at this as a game tree, where our “opponent” (the crowd we’re querying) is playing the statistical strategy <script type="math/tex" id="MathJax-Element-39">P(h) = P(h|x)P_{\theta}(x)</script>. We can calculate <script type="math/tex" id="MathJax-Element-40">L(c,t,E)</script> in closed form whenever we choose to “turn in” our best guess at a node in our game tree, since we can calculate <script type="math/tex" id="MathJax-Element-41">E</script> and we know <script type="math/tex" id="MathJax-Element-42">c</script>, and can take an expectation over <script type="math/tex" id="MathJax-Element-43">t</script> at that point.</p>
 
 <p><img src="http://keenon.github.io/assets/lense/query_game.png" alt="query game structure" title=""></p>
 
@@ -111,35 +124,37 @@ This is a draft document to explain the project.</p>
 
 <h2 id="the-multivariable-case">The multivariable case</h2>
 
-<p>So far we’ve fleshed out what <script type="math/tex" id="MathJax-Element-6067">K</script>-way classification looks like. Lots of problems can be reduced to a (potentially huge) sequence of <script type="math/tex" id="MathJax-Element-6068">K</script>-way classification tasks, but that can be very inefficient.</p>
+<p>So far we’ve fleshed out what <script type="math/tex" id="MathJax-Element-44">K</script>-way classification looks like. Lots of problems can be reduced to a (potentially huge) sequence of <script type="math/tex" id="MathJax-Element-45">K</script>-way classification tasks, but that can be very inefficient.</p>
 
 <p>Let’s imagine using LENSE to do accurate, low-latency NER for use in some pipeline system (say this is for that hedge fund that <a href="http://www.theatlantic.com/technology/archive/2011/03/does-anne-hathaway-news-drive-berkshire-hathaways-stock/72661/">accidentally thought Anne Hathaway positive mentions applied to Berkshire Hathaway</a>). That is generally represented by a sequence model, because the NER classification of a token’s neighbor effects its own NER classification.</p>
 
 <p>We want to be able to ask humans about single tokens in the sequence, since that is much faster and cheaper than asking for labels of the whole sequence. We’d like to be able to use information about some tokens to effect others, and to know which tokens to ask queries about.</p>
 
-<p>Going to arbitrary factor-graphs is a relatively straightforward change to the machinery we’ve already built up. Learning doesn’t need to be changed, we just insert the factor graph where we used to just have a single node “True X,” and hang human observations off of the individual nodes within the factor graph that they were observations for. Our loss function <script type="math/tex" id="MathJax-Element-6069">L(c,t,E)</script> needs to be generalized so that <script type="math/tex" id="MathJax-Element-6070">E</script> is a vector, where each entry <script type="math/tex" id="MathJax-Element-6071">E_i</script> the probability of getting the class of node <script type="math/tex" id="MathJax-Element-6072">i</script> in the graph wrong. Our game player for minimizing expected loss also now needs to generalize to decide which variable to query for, if it chooses to ask humans. Otherwise everything is exactly as before.</p>
+<p>Going to arbitrary factor-graphs is a relatively straightforward change to the machinery we’ve already built up. Learning doesn’t need to be changed, we just insert the factor graph where we used to just have a single node “True X,” and hang human observations off of the individual nodes within the factor graph that they were observations for. Our loss function <script type="math/tex" id="MathJax-Element-46">L(c,t,E)</script> needs to be generalized so that <script type="math/tex" id="MathJax-Element-47">E</script> is a vector, where each entry <script type="math/tex" id="MathJax-Element-48">E_i</script> the probability of getting the class of node <script type="math/tex" id="MathJax-Element-49">i</script> in the graph wrong. Our game player for minimizing expected loss also now needs to generalize to decide which variable to query for, if it chooses to ask humans. Otherwise everything is exactly as before.</p>
 
 <p><img src="http://keenon.github.io/assets/lense/ner_example.png" alt="anne hathaway ner example" title=""></p>
 
 <p>There are a lot of interesting real world tasks that can be cast as MAP inference over a set of variables. In these tasks, it’s often (though not always) faster to query humans about individual variables than whole groups, and these settings especially should see a huge speedup with LENSE.</p>
 
+
+
 <h2 id="in-full-generality">In full generality</h2>
 
-<p>LENSE expects queries to arrive in the form <script type="math/tex" id="MathJax-Element-6305">(G, f(x))</script>. Here <script type="math/tex" id="MathJax-Element-6306">G</script> is a factor graph of random variables we want the values for, where each factor represents feature values (but no weights or probabilistic interpretation). </p>
+<p>LENSE expects queries to arrive in the form <script type="math/tex" id="MathJax-Element-50">(G, f(x))</script>. Here <script type="math/tex" id="MathJax-Element-51">G</script> is a factor graph of random variables we want the values for, where each factor represents feature values (but no weights or probabilistic interpretation). </p>
 
-<p><script type="math/tex" id="MathJax-Element-6307">f(x)</script> is a function that we can pass a subset of variables, and it will return us a human opinion on them at some cost we know, and with some human error rate we don’t know. <script type="math/tex" id="MathJax-Element-6308">f(x)</script> is responsible for phrasing the question to humans, making the query, and returning an answer. </p>
+<p><script type="math/tex" id="MathJax-Element-52">f(x)</script> is a function that we can pass a subset of variables, and it will return us a human opinion on them at some cost we know, and with some human error rate we don’t know. <script type="math/tex" id="MathJax-Element-53">f(x)</script> is responsible for phrasing the question to humans, making the query, and returning an answer. </p>
 
-<p>LENSE will attempt to respond with the MAP assignment to <script type="math/tex" id="MathJax-Element-6309">G</script>. It will do this by calling <script type="math/tex" id="MathJax-Element-6310">f(x)</script> on subsets of variables to gather evidence. The number of times <script type="math/tex" id="MathJax-Element-6311">f(x)</script> will be called, and on which variables, is balanced by a Bayesian Decision Theoretic model that seeks to find the MAP assignment in minimal time, with minimum monetary cost, and with maximum accuracy, which are balanced according to an equation you specify.</p>
+<p>LENSE will attempt to respond with the MAP assignment to <script type="math/tex" id="MathJax-Element-54">G</script>. It will do this by calling <script type="math/tex" id="MathJax-Element-55">f(x)</script> on subsets of variables to gather evidence. The number of times <script type="math/tex" id="MathJax-Element-56">f(x)</script> will be called, and on which variables, is balanced by a Bayesian Decision Theoretic model that seeks to find the MAP assignment in minimal time, with minimum monetary cost, and with maximum accuracy, which are balanced according to an equation you specify.</p>
 
 <p>For every stream of queries to LENSE that are from the same “task”, there are 3 things you need to give it:</p>
 
 <ul>
-<li><script type="math/tex" id="MathJax-Element-6312">P_{\theta}(x)</script>: the kind of model to use for your problem (log-linear, SVR, NN, etc). Your must have <em>some</em> statistical interpretation, and the better tuned the better.</li>
-<li><script type="math/tex" id="MathJax-Element-6313">P(h|x)</script>: the kind of model to use for modeling human error, where <script type="math/tex" id="MathJax-Element-6314">h</script> is the human response, and <script type="math/tex" id="MathJax-Element-6315">x</script> is the true value. This could be as simple as “With probability <script type="math/tex" id="MathJax-Element-6316">\epsilon</script> human chooses uniformly at random, otherwise <script type="math/tex" id="MathJax-Element-6317">h = x</script>”, or as complicated as a rich template model with lots of complicated shared unobserved parameters.</li>
-<li><script type="math/tex" id="MathJax-Element-6318">L(c,t,E)</script>: your loss function, which you would like minimized, as a function of money spend <script type="math/tex" id="MathJax-Element-6319">m</script>, time delay for responses <script type="math/tex" id="MathJax-Element-6320">t</script>, and expected error <script type="math/tex" id="MathJax-Element-6321">E</script>. This can be arbitrarily complex, but a simple example is <script type="math/tex" id="MathJax-Element-6322">L(c,t,E) = c + 0.5t^2 + 4E</script>, where the user is less concerned by cost than error rate (by a factor of 4), and really doesn’t want long delays (hence the square term).</li>
+<li><script type="math/tex" id="MathJax-Element-57">P_{\theta}(x)</script>: the kind of model to use for your problem (log-linear, SVR, NN, etc). Your must have <em>some</em> statistical interpretation, and the better tuned the better.</li>
+<li><script type="math/tex" id="MathJax-Element-58">P(h|x)</script>: the kind of model to use for modeling human error, where <script type="math/tex" id="MathJax-Element-59">h</script> is the human response, and <script type="math/tex" id="MathJax-Element-60">x</script> is the true value. This could be as simple as “With probability <script type="math/tex" id="MathJax-Element-61">\epsilon</script> human chooses uniformly at random, otherwise <script type="math/tex" id="MathJax-Element-62">h = x</script>”, or as complicated as a rich template model with lots of complicated shared unobserved parameters.</li>
+<li><script type="math/tex" id="MathJax-Element-63">L(c,t,E)</script>: your loss function, which you would like minimized, as a function of money spend <script type="math/tex" id="MathJax-Element-64">m</script>, time delay for responses <script type="math/tex" id="MathJax-Element-65">t</script>, and expected error <script type="math/tex" id="MathJax-Element-66">E</script>. This can be arbitrarily complex, but a simple example is <script type="math/tex" id="MathJax-Element-67">L(c,t,E) = c + 0.5t^2 + 4E</script>, where the user is less concerned by cost than error rate (by a factor of 4), and really doesn’t want long delays (hence the square term).</li>
 </ul>
 
-<p>Once you’ve specified all of this, and are sending queries of the form <script type="math/tex" id="MathJax-Element-6323">(G,f(x))</script>, it’s up to LENSE to behave such that your loss function is minimized (getting high accuracy, low cost, and short delays), and to learn parameters to both of your models (human error and priors).</p>
+<p>Once you’ve specified all of this, and are sending queries of the form <script type="math/tex" id="MathJax-Element-68">(G,f(x))</script>, it’s up to LENSE to behave such that your loss function is minimized (getting high accuracy, low cost, and short delays), and to learn parameters to both of your models (human error and priors).</p>
 
 
 
@@ -147,19 +162,23 @@ This is a draft document to explain the project.</p>
 
 <p>That’s all that LENSE is so far. What follows are some suggestions for ways to contribute to the project both in a way that leads to academic papers and in ways that are useful to others (and sometimes both at the same time).</p>
 
-<h2 id="a-central-implementation">A Central Implementation:</h2>
 
-<p>No papers to be found here. Skip to the next section for that.</p>
+
+<h2 id="a-central-implementation">A Central Implementation:</h2>
 
 <p>The unsexy first order of business is a central implementation people can use as a platform for experimentation. That means abstract classes for each of the subcomponents, so changes are easily pluggable. It also means a lot of plumbing and machinery to get the whole thing working, and some careful interface design.</p>
 
-<p>A <a href="https://github.com/lense-project/lense-ref">GitHub repo</a> is up, but currently empty. The current plan (subject to change, if something better comes along) is to build an implementation based on <a href="http://factorie.cs.umass.edu/">FACTORIE</a>. Contributors are of course welcome.</p>
+<p>A <a href="https://github.com/lense-project/lense-ref">GitHub repo</a> is up, but currently at a very early stage, with no documentation at all. It implements all factor-graph calculations using <a href="http://factorie.cs.umass.edu/">FACTORIE</a>. Contributors are of course welcome.</p>
+
+
 
 <h2 id="research-ideas">Research Ideas</h2>
 
 <p>LENSE can be broken down into several subcomponents, which can each be improved individually, more or less. This provides an opportunity to fruitfully <strong>work completely separately, but with mutual goals</strong>, which I’ve always found was the most productive way to go.</p>
 
-<h3 id="better-ways-to-model-phx">Better ways to model <script type="math/tex" id="MathJax-Element-7016">P(h|x)</script>:</h3>
+
+
+<h3 id="better-ways-to-model-phx">Better ways to model <script type="math/tex" id="MathJax-Element-69">P(h|x)</script>:</h3>
 
 <p>This is a hot topic in the ML community because it leads to more accurate corpus construction. Lots of models have been tried, each one with more hidden variables and complicated plate diagrams than the last. NIPS has held a workshop on this for the last two years, which has yielded some papers on error modeling.</p>
 
@@ -170,11 +189,13 @@ This is a draft document to explain the project.</p>
 <li><a href="https://www.soe.ucsc.edu/research/technical-reports/UCSC-SOE-14-01/download">WorkerRank: Using Employer Implicit Judgements To Infer Worker Reputation (NIPS ‘14)</a></li>
 </ul>
 
-<h3 id="the-right-objective-for-pthetax-and-phx">The right objective for <script type="math/tex" id="MathJax-Element-7031">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-7032">P(h|x)</script>:</h3>
 
-<p>Any model for <script type="math/tex" id="MathJax-Element-7033">P_{\theta}(x)</script> that gets used with LENSE needs to provide <strong>accurate statistical estimates</strong>, and <strong>must return a uniform distribution when it doesn’t know</strong>. This is more important than F1. That means that regularization is very important, and that we can’t expect optimal performance from many off-the-shelf algorithms (basically all of classification, and even some regression setups).</p>
 
-<p>Picking the right training objective for this is key. This should probably involve a reference to <script type="math/tex" id="MathJax-Element-7034">L(c,t,E)</script>, because a stronger regularizer will increase your expected cost <script type="math/tex" id="MathJax-Element-7035">c</script> and delay <script type="math/tex" id="MathJax-Element-7036">t</script> in return for better guarantees about your guess of your error expectation <script type="math/tex" id="MathJax-Element-7037">E</script> being an overestimate.</p>
+<h3 id="the-right-objective-for-pthetax-and-phx">The right objective for <script type="math/tex" id="MathJax-Element-70">P_{\theta}(x)</script> and <script type="math/tex" id="MathJax-Element-71">P(h|x)</script>:</h3>
+
+<p>Any model for <script type="math/tex" id="MathJax-Element-72">P_{\theta}(x)</script> that gets used with LENSE needs to provide <strong>accurate statistical estimates</strong>, and <strong>must return a uniform distribution when it doesn’t know</strong>. This is more important than F1. That means that regularization is very important, and that we can’t expect optimal performance from many off-the-shelf algorithms (basically all of classification, and even some regression setups).</p>
+
+<p>Picking the right training objective for this is key. This should probably involve a reference to <script type="math/tex" id="MathJax-Element-73">L(c,t,E)</script>, because a stronger regularizer will increase your expected cost <script type="math/tex" id="MathJax-Element-74">c</script> and delay <script type="math/tex" id="MathJax-Element-75">t</script> in return for better guarantees about your guess of your error expectation <script type="math/tex" id="MathJax-Element-76">E</script> being an overestimate.</p>
 
 <p><strong>Related Work</strong>:</p>
 
@@ -195,20 +216,7 @@ This is a draft document to explain the project.</p>
 Performance on Crowdsourcing Platforms (CHI ‘14)</a></li>
 </ul>
 
-<h3 id="parallels-between-lcte-and-active-learning">Parallels between <script type="math/tex" id="MathJax-Element-6966">L(c,t,E)</script> and active learning:</h3>
-
-<p>There are obviously strong analogies between what we’re doing with <script type="math/tex" id="MathJax-Element-6967">L(c,t,E)</script> and active learning. It would be nice to have a better grasp of what exactly those parallels are. I have a strong suspicion that the LENSE model can be made to behave just like an active learning system if the time delay penalty is 0. It would be nice to have a proof of that.</p>
-
-<p><strong>Related Work:</strong></p>
-
-<ul>
-<li><a href="http://www.ipeirotis.com/wp-content/uploads/2012/01/kdd2008.pdf">Get Another Label? Improving Data Quality and Data Mining <br>
-Using Multiple, Noisy Labelers</a></li>
-<li><a href="http://cseweb.ucsd.edu/~dasgupta/papers/twoface.pdf">Two faces of active learning (‘11)</a></li>
-<li><a href="http://malago.di.unimi.it/papers/2014crowdwisdom.pdf">Online Active Learning with Strong and Weak Annotators (NIPS ‘14)</a></li>
-</ul>
-
-<h3 id="a-richer-set-of-choices-to-optimize-lcte-over">A richer set of choices to optimize <script type="math/tex" id="MathJax-Element-7013">L(c,t,E)</script> over:</h3>
+<h3 id="a-richer-set-of-choices-to-optimize-lcte-over">A richer set of choices to optimize <script type="math/tex" id="MathJax-Element-79">L(c,t,E)</script> over:</h3>
 
 <p>We could have a richer set of choices for the algorithm. For example, what if there are multiple available humans, each with a different length of queue of requests (effecting expected delay) and a different accuracy and rate of completion. We would then have to choose between humans.</p>
 
